@@ -93,7 +93,7 @@ NODE_NAME = 'org.dronecan.gui_tool'
 
 
 class MainWindow(QMainWindow):
-    MAX_SUCCESSIVE_NODE_ERRORS = 1000
+    MAX_SUCCESSIVE_NODE_ERRORS = 1000000
 
     # noinspection PyTypeChecker,PyCallByClass,PyUnresolvedReferences
     def __init__(self, node, iface_name):
