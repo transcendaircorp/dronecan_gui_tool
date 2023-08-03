@@ -11,9 +11,10 @@ import glob
 import time
 import threading
 import copy
-from .widgets import show_error, get_monospace_font
+from .widgets import show_error, get_monospace_font, directory_selection
 from PyQt5.QtWidgets import QComboBox, QCompleter, QDialog, QDirModel, QFileDialog, QGroupBox, QHBoxLayout, QLabel, \
     QLineEdit, QPushButton, QSpinBox, QVBoxLayout, QGridLayout, QCheckBox
+from qtwidgets import PasswordEdit
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QIntValidator
 from logging import getLogger
@@ -83,6 +84,7 @@ def list_ifaces():
             ifaces = _linux_parse_proc_net_dev(ifaces)       # Fallback
 
         ifaces += _mavcan_interfaces()
+        ifaces += ["mcast:0", "mcast:1"]
 
         out = OrderedDict()
         for x in ifaces:
@@ -102,8 +104,17 @@ def list_ifaces():
                 out[port.description()] = port.systemLocation()
 
         mifaces = _mavcan_interfaces()
+        mifaces += ["mcast:0", "mcast:1"]
         for x in mifaces:
             out[x] = x
+
+        try:
+            from can import detect_available_configs
+            for interface in detect_available_configs():
+                if interface['interface'] == "pcan":
+                    out[interface['channel']] = interface['channel']
+        except Exception as ex:
+            logger.warning('Could not load can interfaces: %s', ex, exc_info=True)
 
         return out
 
@@ -138,40 +149,6 @@ class BackgroundIfaceListUpdater:
     def get_list(self):
         with self._lock:
             return copy.copy(self._ifaces)
-
-
-class DirectorySelectionWidget(QGroupBox):
-    def __init__(self, parent, dsdl_path=None):
-        super(DirectorySelectionWidget, self).__init__('Location of custom DSDL definitions [optional]', parent)
-        self._dir_selection = dsdl_path
-        dir_textbox = QLineEdit(self)
-        dir_textbox.setText(self._dir_selection)
-
-        dir_text_completer = QCompleter(self)
-        dir_text_completer.setCaseSensitivity(Qt.CaseSensitive)
-        dir_text_completer.setModel(QDirModel(self))
-        dir_textbox.setCompleter(dir_text_completer)
-
-        def on_edit():
-            self._dir_selection = str(dir_textbox.text())
-
-        dir_textbox.textChanged.connect(on_edit)
-
-        dir_browser = QPushButton('Browse', self)
-
-        def on_browse():
-            self._dir_selection = str(QFileDialog.getExistingDirectory(self, 'Select Directory'))
-            dir_textbox.setText(self._dir_selection)
-
-        dir_browser.clicked.connect(on_browse)
-
-        layout = QHBoxLayout(self)
-        layout.addWidget(dir_textbox)
-        layout.addWidget(dir_browser)
-        self.setLayout(layout)
-
-    def get_selection(self):
-        return self._dir_selection
 
 
 def run_setup_window(icon, dsdl_path=None):
@@ -222,8 +199,10 @@ def run_setup_window(icon, dsdl_path=None):
     target_system.setMaximum(255)
     target_system.setMinimum(0)
     target_system.setValue(0)
-    
-    dir_selection = DirectorySelectionWidget(win, dsdl_path)
+
+    signing_key = PasswordEdit(win)
+
+    dir_selection = directory_selection.DirectorySelectionWidget(win, dsdl_path, directory_only=True)
 
     ok = QPushButton('OK', win)
 
@@ -278,6 +257,7 @@ def run_setup_window(icon, dsdl_path=None):
         kwargs['bus_number'] = int(bus_number.value())
         kwargs['filtered'] = filtered.checkState()
         kwargs['mavlink_target_system'] = int(target_system.value())
+        kwargs['mavlink_signing_key'] = signing_key.text()
         result_key = str(combo.currentText()).strip()
         if not result_key:
             show_error('Invalid parameters', 'Interface name cannot be empty', 'Please select a valid interface',
@@ -308,6 +288,8 @@ def run_setup_window(icon, dsdl_path=None):
     adapter_layout.addWidget(filtered, 3, 1)
     adapter_layout.addWidget(QLabel('MAVLink target system (0 for auto):'), 4, 0)
     adapter_layout.addWidget(target_system, 4, 1)
+    adapter_layout.addWidget(QLabel('MAVLink signing key:'), 5, 0)
+    adapter_layout.addWidget(signing_key, 5, 1)
 
     adapter_group.setLayout(adapter_layout)
 

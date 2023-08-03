@@ -40,13 +40,14 @@ args = dict(
     packages=find_packages(),
     install_requires=[
         'setuptools>=18.5',
-        'dronecan>=1.0.14',
+        'dronecan>=1.0.25',
         'pyserial>=3.0',
         'pymavlink>=2.4.26',
         'qtawesome>=0.3.1',
         'qtconsole>=4.2.0',
         'pyyaml>=5.1',
         'easywebdav>=1.2',
+        'pymonocypher',
         'numpy',
         'pyqt5',
         'traitlets',
@@ -54,7 +55,8 @@ args = dict(
         'ipykernel',
         'pygments',
         'qtpy',
-        'pyqtgraph'
+        'pyqtgraph',
+        'qtwidgets'
     ],
     # We can't use "scripts" here, because generated shims don't work with multiprocessing pickler.
     entry_points={
@@ -180,8 +182,8 @@ if ('bdist_msi' in sys.argv) or ('build_exe' in sys.argv):
         cx_Freeze.Executable(os.path.join('bin', PACKAGE_NAME),
                              base='Win32GUI',
                              icon='icons/logo.ico',
-                             shortcutName=HUMAN_FRIENDLY_NAME,
-                             shortcutDir='ProgramMenuFolder'),
+                             shortcut_name=HUMAN_FRIENDLY_NAME,
+                             shortcut_dir='ProgramMenuFolder'),
     ]
     # Dispatching to cx_Freeze only if MSI build was requested explicitly. Otherwise continue with regular setup.
     # This is done in order to be able to install dependencies with regular setuptools.

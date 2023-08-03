@@ -20,6 +20,7 @@ parser = ArgumentParser(description='DroneCAN GUI tool')
 
 parser.add_argument("--debug", action='store_true', help="enable debugging")
 parser.add_argument("--dsdl", help="path to custom DSDL")
+parser.add_argument("--signing-passphrase", help="MAVLink2 signing passphrase", default=None)
 
 args = parser.parse_args()
 
@@ -96,7 +97,7 @@ class MainWindow(QMainWindow):
     MAX_SUCCESSIVE_NODE_ERRORS = 1000000
 
     # noinspection PyTypeChecker,PyCallByClass,PyUnresolvedReferences
-    def __init__(self, node, iface_name):
+    def __init__(self, node, iface_name, iface_kwargs):
         # Parent
         super(MainWindow, self).__init__()
         self.setWindowTitle('DroneCAN GUI Tool')
@@ -129,6 +130,11 @@ class MainWindow(QMainWindow):
         self._bus_monitor_manager = BusMonitorManager(self._node, iface_name)
         # Console manager depends on other stuff via context, initialize it last
         self._console_manager = ConsoleManager(self._make_console_context)
+
+        if args.signing_passphrase is not None:
+            self._node.can_driver.set_signing_passphrase(args.signing_passphrase)
+        elif iface_kwargs['mavlink_signing_key']:
+            self._node.can_driver.set_signing_passphrase(iface_kwargs['mavlink_signing_key'])
 
         #
         # File menu
@@ -626,7 +632,7 @@ def main():
             break
 
     logger.info('Creating main window; iface %r', iface)
-    window = MainWindow(node, iface)
+    window = MainWindow(node, iface, iface_kwargs)
     window.show()
 
     try:
